@@ -1,0 +1,90 @@
+admin:
+  address:
+    socket_address: { address: 0.0.0.0, port_value: 10001 }
+
+static_resources:
+  listeners:
+  - name: listener_0
+    address:
+      socket_address: { address: 0.0.0.0, port_value: 10000 }
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: ingress_http
+          codec_type: AUTO
+          route_config:
+            name: local_route
+            virtual_hosts:
+            - name: local_service
+              domains: ["*"]
+              routes:
+              - match: 
+                  prefix: "/" 
+                  headers:
+                    - name: "SVC"
+                      exact_match: "svc01"                
+                route: { cluster: svc01 }
+              - match: 
+                  prefix: "/" 
+                  headers:
+                    - name: "SVC"
+                      exact_match: "svc02"                
+                route: { cluster: svc02 }
+              - match: 
+                  prefix: "/" 
+                  headers:
+                    - name: "SVC"
+                      present_match: false         
+                route: { cluster: svc }
+          http_filters:
+          - name: envoy.filters.http.router
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+              
+  clusters:
+  - name: svc01
+    connect_timeout: 0.25s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: some_service
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: svc01
+                port_value: 80
+  - name: svc02
+    connect_timeout: 0.25s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: some_service
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: svc02
+                port_value: 80
+  - name: svc
+    connect_timeout: 0.25s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: some_service
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: svc01
+                port_value: 80                
+        - endpoint:
+            address:
+              socket_address:
+                address: svc02
+                port_value: 80  
