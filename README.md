@@ -1,5 +1,7 @@
 # Route based on headers:
 
+Start with `docker-compose`: `docker compose up && docker compose down`.
+
 Use the header `SVC` to select the desired upstream server:
 ```
 curl -H "SVC:svc02" 127.0.0.1:9001 # envoy
