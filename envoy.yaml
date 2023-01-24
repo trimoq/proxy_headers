@@ -42,6 +42,33 @@ static_resources:
           - name: envoy.filters.http.router
             typed_config:
               "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+  - name: listener_hash
+    address:
+      socket_address: { address: 0.0.0.0, port_value: 10002 }
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: ingress_http
+          codec_type: AUTO
+          route_config:
+            name: local_route
+            virtual_hosts:
+            - name: local_service
+              domains: ["*"]
+              routes:
+              - match: {prefix: "/" }        
+                route:  
+                  cluster: svc_hash
+                  hash_policy:
+                    - header:
+                        header_name: SVC
+          http_filters:
+          - name: envoy.filters.http.router
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
               
   clusters:
   - name: svc01
@@ -74,6 +101,24 @@ static_resources:
     connect_timeout: 0.25s
     type: STRICT_DNS
     lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: some_service
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: svc01
+                port_value: 80                
+        - endpoint:
+            address:
+              socket_address:
+                address: svc02
+                port_value: 80  
+  - name: svc_hash
+    connect_timeout: 0.25s
+    type: STRICT_DNS
+    lb_policy: RING_HASH
     load_assignment:
       cluster_name: some_service
       endpoints:
